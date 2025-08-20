@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WherU - Location Sharing App</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="Share your location and communicate with friends privately">
+    <meta name="theme-color" content="#4facfe">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="WherU">
+    
+    <!-- PWA Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- External CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <div class="app-container">
+        <div class="header">
+            <div class="header-left">
+                <div class="logo"></div>
+            </div>
+            <div class="header-controls">
+                <button class="flash-btn" id="flash-btn">⚡ Flash Me</button>
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; background: #e5e7eb; padding: 6px 10px; border-radius: 6px; border: 1px solid #9ca3af;">
+                    <span id="toggle-text" style="font-size: 14px; font-weight: 600; color: #1e293b;">Share Location</span>
+                    <div class="toggle-switch" id="location-toggle">
+                        <div class="toggle-slider"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="friends-list">
+                    <div class="friends-header">Friends with WherU</div>
+                    <div class="app-users-note">Only showing contacts who have the app installed</div>
+                    <div id="friends-container">
+                        <!-- Friends will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+            
+            <div id="map">
+                <button class="center-location-btn" id="center-location-btn" title="Center on my location">🎯</button>
+            </div>
+        </div>
+
+        <!-- Message Overlay -->
+        <div class="message-overlay" id="message-overlay"></div>
+        
+        <!-- Message Container -->
+        <div class="message-container" id="message-container">
+            <div class="message-header">
+                <div class="friend-avatar" id="chat-avatar">SC</div>
+                <div>
+                    <div id="chat-name">Sarah Chen</div>
+                    <div style="font-size: 12px; opacity: 0.8;">Online • Sharing location</div>
+                </div>
+                <button class="close-messages" id="close-messages">×</button>
+            </div>
+            
+            <div class="message-list" id="message-list">
+                <!-- Messages will be populated here -->
+            </div>
+            
+            <div class="message-input-area">
+                <button class="walkie-talkie-btn" id="walkie-btn">
+                    📻 Push To Talk
+                </button>
+                <div class="input-row">
+                    <input type="text" class="message-input" id="message-input" placeholder="Type a message...">
+                    <button class="send-btn" id="send-btn">→</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        console.log('WherU: Service Worker registered successfully:', registration.scope);
+                    })
+                    .catch((error) => {
+                        console.log('WherU: Service Worker registration failed:', error);
+                    });
+            });
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        const installButton = document.createElement('button');
+        installButton.textContent = '📱 Install WherU';
+        installButton.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: #4facfe;
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 4px 12px rgba(79, 172, 254, 0.3);
+        `;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('WherU: Install prompt available');
+            e.preventDefault();
+            deferredPrompt = e;
+            installButton.style.display = 'block';
+            document.body.appendChild(installButton);
+        });
+
+        installButton.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log('WherU: Install prompt outcome:', outcome);
+                deferredPrompt = null;
+                installButton.style.display = 'none';
+            }
+        });
+
+        window.addEventListener('appinstalled', () => {
+            console.log('WherU: App installed successfully');
+            installButton.style.display = 'none';
+        });
+
+        // Wait for Leaflet to load before initializing
+        function waitForLeaflet() {
+            if (typeof L !== 'undefined') {
+                initializeApp();
+            } else {
+                setTimeout(waitForLeaflet, 100);
+            }
+        }
+
+        // App state
+        let locationSharingEnabled = false;
+        let map = null;
+        let userMarker = null;
+        let friendMarkers = {};
+        let currentChatFriend = null;
+        let messages = {};
+
+        // Walkie talkie state
+        let isTransmitting = false;
+        let localStream = null;
+        let peerConnection = null;
+
+        // Sample contact-based friend data - only showing contacts with the app
+        const friends = [
+            {
+                id: 1,
+                name: "Alex Johnson",
+                phone: "+1 (555) 123-4567",
+                avatar: "AJ",
+                lat: 37.7749,
+                lng: -122.4194,
+                lastSeen: "2 min ago",
+                locationOn: true,
+                iCanSeeMe: true
+            },
+            {
+                id: 2,
+                name: "Sarah Chen", 
+                phone: "+1 (555) 987-6543",
+                avatar: "SC",
+                lat: 37.7849,
+                lng: -122.4094,
+                lastSeen: "5 min ago",
+                locationOn: true,
+                iCanSeeMe: true
+            },
+            {
+                id: 3,
+                name: "Mike Wilson",
+                phone: "+1 (555) 456-7890",
+                avatar: "MW",
+                lat: 37.7649,
+                lng: -122.4294,
+                lastSeen: "1 hour ago",
+                locationOn: false,
+                iCanSeeMe: true
+            },
+            {
+                id: 4,
+                name: "Emma Davis",
+                phone: "+1 (555) 321-0987",
+                avatar: "ED",
+                lat: 37.7949,
+                lng: -122.3994,
+                lastSeen: "3 min ago",
+                locationOn: true,
+                iCanSeeMe: false
+            },
+            {
+                id: 5,
+                name: "Dennis Kumar",
+                phone: "+1 (555) 111-2222", 
+                avatar: "DK",
+                lat: 37.7549,
+                lng: -122.4394,
+                lastSeen: "10 min ago",
+                locationOn: true,
+                iCanSeeMe: false
+            },
+            {
+                id: 6,
+                name: "Kylie Martinez",
+                phone: "+1 (555) 333-4444",
+                avatar: "KM", 
+                lat: 37.7749,
+                lng: -122.4094,
+                lastSeen: "1 min ago",
+                locationOn: true,
+                iCanSeeMe: true
+            }
+        ];
+
+        // Initialize map
+        function initMap() {
+            map = L.map('map').setView([37.7749, -122.4194], 13);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+        }
+
+        // Create custom marker icons
+        function createMarkerIcon(color, text) {
+            return L.divIcon({
+                className: 'custom-marker',
+                html: `<div style="
+                    width: 40px;
+                    height: 40px;
+                    background: ${color};
+                    border: 3px solid white;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-weight: bold;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                    font-size: 12px;
+                ">${text}</div>`,
+                iconSize: [40, 40],
+                iconAnchor: [20, 20]
+            });
+        }
+
+        // Initialize sample messages
+        function initializeMessages() {
+            messages = {
+                2: [
+                    { text: "Hey! Where are you?", sent: false, time: "2:30 PM" },
+                    { text: "I'm at the coffee shop on Market St", sent: true, time: "2:31 PM" },
+                    { text: "Perfect! I can see you on the map now 📍", sent: false, time: "2:32 PM" }
+                ],
+                6: [
+                    { text: "Are we still meeting at the park?", sent: false, time: "1:15 PM" },
+                    { text: "Yes! I'm heading there now", sent: true, time: "1:20 PM" }
+                ]
+            };
+        }
+
+        // Flash user location on the map
+        function flashMyLocation() {
+            if (!locationSharingEnabled) {
+                alert('Please turn on location sharing first to flash your location');
+                return;
+            }
+            
+            if (!userMarker) {
+                alert('Your location is not available on the map yet');
+                return;
+            }
+            
+            // Disable the flash button temporarily
+            const flashBtn = document.getElementById('flash-btn');
+            flashBtn.disabled = true;
+            flashBtn.textContent = '⚡ Flashing...';
+            
+            // Center the map on user location with maximum zoom for crowded areas
+            const userPosition = userMarker.getLatLng();
+            map.setView([userPosition.lat, userPosition.lng], 18);
+            
+            // Add emergency flashing animation to the marker
+            const markerElement = userMarker.getElement();
+            if (markerElement) {
+                markerElement.classList.add('emergency-flashing');
+            }
+            
+            // Stop flashing after 4 seconds
+            setTimeout(() => {
+                if (markerElement) {
+                    markerElement.classList.remove('emergency-flashing');
+                }
+                flashBtn.disabled = false;
+                flashBtn.textContent = '⚡ Flash Me';
+            }, 4000);
+        }
+
+        // Center map on user's location
+        function centerOnMyLocation() {
+            if (!locationSharingEnabled) {
+                alert('Please turn on location sharing first');
+                return;
+            }
+            
+            if (userMarker) {
+                // If we already have user's location, center on it
+                const userPosition = userMarker.getLatLng();
+                map.setView([userPosition.lat, userPosition.lng], 15);
+                userMarker.openPopup();
+            } else {
+                // Try to get current location
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            const { latitude, longitude } = position.coords;
+                            map.setView([latitude, longitude], 15);
+                            
+                            // Add/update user marker if location sharing is on
+                            if (locationSharingEnabled) {
+                                addUserLocation();
+                            }
+                        },
+                        (error) => {
+                            alert('Unable to get your location. Please make sure location services are enabled.');
+                        }
+                    );
+                } else {
+                    alert('Geolocation is not supported by your browser.');
+                }
+            }
+        }
+
+        // Add friend markers to map (show friends who have location ON, regardless of visibility settings)
+        function addFriendMarkers() {
+            console.log('Adding friend markers to map...');
+            friends.forEach(friend => {
+                if (friend.locationOn) {
+                    console.log(`Adding marker for ${friend.name} at [${friend.lat}, ${friend.lng}]`);
+                    const icon = createMarkerIcon('#4facfe', friend.avatar);
+                    const marker = L.marker([friend.lat, friend.lng], { icon: icon })
+                        .addTo(map)
+                        .bindPopup(`
+                            <div class="location-popup">
+                                <div class="popup-name">${friend.name}</div>
+                                <div class="popup-time">Last seen: ${friend.lastSeen}</div>
+                            </div>
+                        `);
+                    
+                    friendMarkers[friend.id] = marker;
+                    console.log(`Marker added for ${friend.name}, total markers: ${Object.keys(friendMarkers).length}`);
+                } else {
+                    console.log(`Skipping ${friend.name} - location is OFF`);
+                }
+            });
+        }
+
+        // Populate friends list with privacy controls
+        function populateFriendsList() {
+            const container = document.getElementById('friends-container');
+            
+            friends.forEach(friend => {
+                const friendElement = document.createElement('div');
+                friendElement.className = `friend-item ${!friend.iCanSeeMe ? 'invisible' : ''}`;
+                
+                let statusText = '';
+                let statusClass = '';
+                
+                if (!friend.locationOn) {
+                    statusText = 'Location off';
+                    statusClass = 'status-offline';
+                } else if (!friend.iCanSeeMe) {
+                    statusText = 'You are hidden';
+                    statusClass = 'status-offline';
+                } else {
+                    statusText = `Last seen: ${friend.lastSeen}`;
+                    statusClass = 'status-online';
+                }
+                
+                friendElement.innerHTML = `
+                    <div class="friend-main-row">
+                        <div class="friend-avatar">${friend.avatar}</div>
+                        <div class="friend-info">
+                            <div class="friend-name">${friend.name}</div>
+                            <div class="friend-status">${statusText}</div>
+                        </div>
+                        <div class="status-indicator ${statusClass}"></div>
+                    </div>
+                    <div class="friend-controls-row">
+                        <div class="friend-controls">
+                            <div class="visibility-toggle ${friend.iCanSeeMe ? 'visible' : ''}" 
+                                 data-friend-id="${friend.id}" title="Toggle visibility to ${friend.name}">
+                                <div class="visibility-slider"></div>
+                            </div>
+                            <span class="visibility-label">${friend.iCanSeeMe ? 'Can see me' : 'Hidden from me'}</span>
+                        </div>
+                        <button class="message-btn" data-friend-id="${friend.id}" title="Message ${friend.name}">💬</button>
+                    </div>
+                `;
+                
+                // Click to view on map (only on the main row, not controls)
+                const mainRow = friendElement.querySelector('.friend-main-row');
+                mainRow.addEventListener('click', (e) => {
+                    console.log(`Clicked on ${friend.name}, locationOn: ${friend.locationOn}`);
+                    console.log(`Friend coordinates: [${friend.lat}, ${friend.lng}]`);
+                    console.log(`Marker exists:`, !!friendMarkers[friend.id]);
+                    
+                    if (friend.locationOn) {
+                        if (friendMarkers[friend.id]) {
+                            const markerLatLng = friendMarkers[friend.id].getLatLng();
+                            console.log(`Marker position: [${markerLatLng.lat}, ${markerLatLng.lng}]`);
+                            
+                            // Force center using flyTo for smooth precise centering
+                            map.flyTo([friend.lat, friend.lng], 17, { 
+                                animate: true,
+                                duration: 2.0 
+                            });
+                            
+                            // Open popup after animation
+                            setTimeout(() => {
+                                friendMarkers[friend.id].openPopup();
+                            }, 2500);
+                            
+                        } else {
+                            console.log(`No marker found for ${friend.name} - trying to add one`);
+                            // Try to add the marker if it's missing
+                            const icon = createMarkerIcon('#4facfe', friend.avatar);
+                            const marker = L.marker([friend.lat, friend.lng], { icon: icon })
+                                .addTo(map)
+                                .bindPopup(`
+                                    <div class="location-popup">
+                                        <div class="popup-name">${friend.name}</div>
+                                        <div class="popup-time">Last seen: ${friend.lastSeen}</div>
+                                    </div>
+                                `);
+                            friendMarkers[friend.id] = marker;
+                            
+                            // Now center on it
+                            map.flyTo([friend.lat, friend.lng], 17, { duration: 2.0 });
+                        }
+                    } else {
+                        alert(`${friend.name} has their location turned off`);
+                    }
+                });
+                
+                container.appendChild(friendElement);
+            });
+
+            // Add event listeners for visibility toggles
+            document.querySelectorAll('.visibility-toggle').forEach(toggle => {
+                toggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const friendId = parseInt(toggle.dataset.friendId);
+                    toggleFriendVisibility(friendId);
+                });
+            });
+
+            // Add event listeners for message buttons
+            document.querySelectorAll('.message-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const friendId = parseInt(btn.dataset.friendId);
+                    openChat(friendId);
+                });
+            });
+        }
+
+        // Toggle friend visibility (whether they can see me)
+        function toggleFriendVisibility(friendId) {
+            const friend = friends.find(f => f.id === friendId);
+            if (friend) {
+                friend.iCanSeeMe = !friend.iCanSeeMe;
+                refreshMap();
+                refreshFriendsList();
+            }
+        }
+
+        // Open chat with a friend
+        function openChat(friendId) {
+            currentChatFriend = friends.find(f => f.id === friendId);
+            if (!currentChatFriend) return;
+
+            document.getElementById('chat-avatar').textContent = currentChatFriend.avatar;
+            document.getElementById('chat-name').textContent = currentChatFriend.name;
+            
+            // Update walkie talkie button
+            const walkieBtn = document.getElementById('walkie-btn');
+            walkieBtn.innerHTML = '📻 Push To Talk';
+            
+            displayMessages(friendId);
+            
+            document.getElementById('message-overlay').style.display = 'block';
+            document.getElementById('message-container').classList.add('open');
+        }
+
+        // Close chat
+        function closeChat() {
+            document.getElementById('message-overlay').style.display = 'none';
+            document.getElementById('message-container').classList.remove('open');
+            currentChatFriend = null;
+        }
+
+        // Display messages for a friend
+        function displayMessages(friendId) {
+            const messageList = document.getElementById('message-list');
+            messageList.innerHTML = '';
+            
+            const friendMessages = messages[friendId] || [];
+            
+            friendMessages.forEach(msg => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message-item ${msg.sent ? 'sent' : 'received'}`;
+                messageDiv.innerHTML = `
+                    <div class="message-bubble">
+                        ${msg.text}
+                        <div style="font-size: 10px; opacity: 0.7; margin-top: 4px;">${msg.time}</div>
+                    </div>
+                `;
+                messageList.appendChild(messageDiv);
+            });
+            
+            messageList.scrollTop = messageList.scrollHeight;
+        }
+
+        // Send message
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            const messageText = input.value.trim();
+            
+            if (!messageText || !currentChatFriend) return;
+            
+            const friendId = currentChatFriend.id;
+            if (!messages[friendId]) {
+                messages[friendId] = [];
+            }
+            
+            const now = new Date();
+            const time = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            messages[friendId].push({
+                text: messageText,
+                sent: true,
+                time: time
+            });
+            
+            input.value = '';
+            displayMessages(friendId);
+        }
+
+        // Walkie talkie functionality
+        function initializeWalkieTalkie() {
+            const walkieBtn = document.getElementById('walkie-btn');
+            
+            // Mouse events for desktop
+            walkieBtn.addEventListener('mousedown', startTransmission);
+            walkieBtn.addEventListener('mouseup', stopTransmission);
+            walkieBtn.addEventListener('mouseleave', stopTransmission);
+            
+            // Touch events for mobile
+            walkieBtn.addEventListener('touchstart', startTransmission);
+            walkieBtn.addEventListener('touchend', stopTransmission);
+            
+            // Prevent context menu
+            walkieBtn.addEventListener('contextmenu', (e) => e.preventDefault());
+        }
+
+        async function startTransmission() {
+            if (isTransmitting) return;
+            
+            try {
+                // Get microphone access
+                localStream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                });
+                
+                isTransmitting = true;
+                
+                // Update button appearance
+                const walkieBtn = document.getElementById('walkie-btn');
+                walkieBtn.classList.add('transmitting');
+                walkieBtn.innerHTML = '🔴 TRANSMITTING...';
+                
+                // Play start beep (simulated)
+                console.log('🔊 Transmission started');
+                
+                // TODO: Set up WebRTC connection and stream audio
+                
+            } catch (error) {
+                console.error('Microphone access denied:', error);
+                alert('Microphone access is required for walkie talkie feature');
+            }
+        }
+
+        function stopTransmission() {
+            if (!isTransmitting) return;
+            
+            isTransmitting = false;
+            
+            // Stop microphone
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            
+            // Update button appearance
+            const walkieBtn = document.getElementById('walkie-btn');
+            walkieBtn.classList.remove('transmitting');
+            walkieBtn.innerHTML = '📻 Push To Talk';
+            
+            // Play end beep (simulated)
+            console.log('🔊 Transmission ended');
+            
+            // TODO: Close WebRTC connection
+        }
+
+        // Refresh map markers
+        function refreshMap() {
+            // Clear existing markers
+            Object.values(friendMarkers).forEach(marker => {
+                map.removeLayer(marker);
+            });
+            friendMarkers = {};
+            
+            // Re-add markers with current visibility settings
+            addFriendMarkers();
+        }
+
+        // Refresh friends list
+        function refreshFriendsList() {
+            document.getElementById('friends-container').innerHTML = '';
+            populateFriendsList();
+        }
+
+        // Add user location
+        function addUserLocation() {
+            if (navigator.geolocation && locationSharingEnabled) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const { latitude, longitude } = position.coords;
+                        
+                        if (userMarker) {
+                            map.removeLayer(userMarker);
+                        }
+                        
+                        const icon = createMarkerIcon('#10b981', 'ME');
+                        userMarker = L.marker([latitude, longitude], { icon: icon })
+                            .addTo(map)
+                            .bindPopup('<div class="location-popup"><div class="popup-name">You are here</div></div>');
+                        
+                        map.setView([latitude, longitude], 13);
+                    },
+                    (error) => {
+                        console.log('Location access denied or unavailable');
+                        // Use default San Francisco location for demo
+                        const icon = createMarkerIcon('#10b981', 'ME');
+                        userMarker = L.marker([37.7749, -122.4194], { icon: icon })
+                            .addTo(map)
+                            .bindPopup('<div class="location-popup"><div class="popup-name">You are here (demo)</div></div>');
+                    }
+                );
+            } else {
+                if (userMarker) {
+                    map.removeLayer(userMarker);
+                    userMarker = null;
+                }
+            }
+        }
+
+        // Toggle location sharing
+        function toggleLocationSharing() {
+            locationSharingEnabled = !locationSharingEnabled;
+            const toggle = document.getElementById('location-toggle');
+            const toggleText = document.getElementById('toggle-text');
+            
+            if (locationSharingEnabled) {
+                toggle.classList.add('active');
+                toggleText.textContent = 'Location On';
+                addUserLocation();
+            } else {
+                toggle.classList.remove('active');
+                toggleText.textContent = 'Location Off';
+                if (userMarker) {
+                    map.removeLayer(userMarker);
+                    userMarker = null;
+                }
+            }
+            
+            refreshMap();
+        }
+
+        // Initialize app
+        function initializeApp() {
+            initMap();
+            initializeMessages();
+            populateFriendsList();
+            addFriendMarkers();
+            initializeWalkieTalkie();
+            
+            // Add event listeners
+            document.getElementById('location-toggle').addEventListener('click', toggleLocationSharing);
+            document.getElementById('flash-btn').addEventListener('click', flashMyLocation);
+            document.getElementById('center-location-btn').addEventListener('click', centerOnMyLocation);
+            document.getElementById('close-messages').addEventListener('click', closeChat);
+            document.getElementById('message-overlay').addEventListener('click', closeChat);
+            document.getElementById('send-btn').addEventListener('click', sendMessage);
+            document.getElementById('message-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+        }
+
+        // Start the app when page loads and Leaflet is ready
+        window.addEventListener('load', waitForLeaflet);
+    </script>
+</body>
+</html>
