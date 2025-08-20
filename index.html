@@ -31,6 +31,24 @@
     <!-- External CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <link rel="stylesheet" href="styles.css" />
+    <script>
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();              // don’t auto-show
+  deferredPrompt = e;
+  document.getElementById('installBtn').hidden = false;
+});
+
+document.getElementById('installBtn').addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice; // { outcome: 'accepted' | 'dismissed' }
+  deferredPrompt = null;
+  document.getElementById('installBtn').hidden = true;
+});
+</script>
+
 </head>
 <body>
     <div class="app-container">
@@ -39,6 +57,7 @@
                 <div class="logo"></div>
             </div>
             <div class="header-controls">
+                <button id="installBtn" hidden>Install WherU</button>
                 <button class="flash-btn" id="flash-btn">⚡ Flash Me</button>
                 <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; background: #e5e7eb; padding: 6px 10px; border-radius: 6px; border: 1px solid #9ca3af;">
                     <span id="toggle-text" style="font-size: 14px; font-weight: 600; color: #1e293b;">Share Location</span>
