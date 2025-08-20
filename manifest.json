@@ -2,23 +2,23 @@
   "name": "WherU - Location Sharing App",
   "short_name": "WherU",
   "description": "Share your location and communicate with friends privately",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#4facfe",
   "theme_color": "#4facfe",
-  "orientation": "portrait",
-  "scope": "/",
+  "orientation": "portrait-primary",
+  "scope": "./",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%234facfe'/%3E%3Cpath d='M96 40c-30.928 0-56 25.072-56 56 0 42 56 96 56 96s56-54 56-96c0-30.928-25.072-56-56-56zm0 76c-11.046 0-20-8.954-20-20s8.954-20 20-20 20 8.954 20 20-8.954 20-20 20z' fill='white'/%3E%3C/svg%3E",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
     },
     {
-      "src": "icon-512.png",
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%234facfe'/%3E%3Cpath d='M256 106.67c-82.475 0-149.33 67.525-149.33 149.33 0 112 149.33 256 149.33 256s149.33-144 149.33-256c0-82.475-66.855-149.33-149.33-149.33zm0 202.66c-29.456 0-53.33-23.874-53.33-53.33s23.874-53.33 53.33-53.33 53.33 23.874 53.33 53.33-23.874 53.33-53.33 53.33z' fill='white'/%3E%3C/svg%3E",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
     }
   ],
@@ -28,16 +28,11 @@
       "name": "Flash Location",
       "short_name": "Flash",
       "description": "Flash your location to friends",
-      "url": "/?action=flash",
-      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "screenshot-mobile.png",
-      "sizes": "640x1136",
-      "type": "image/png",
-      "form_factor": "narrow"
+      "url": "./?action=flash",
+      "icons": [{ 
+        "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%234facfe'/%3E%3Cpath d='M96 40c-30.928 0-56 25.072-56 56 0 42 56 96 56 96s56-54 56-96c0-30.928-25.072-56-56-56zm0 76c-11.046 0-20-8.954-20-20s8.954-20 20-20 20 8.954 20 20-8.954 20-20 20z' fill='white'/%3E%3C/svg%3E", 
+        "sizes": "192x192" 
+      }]
     }
   ]
 }
