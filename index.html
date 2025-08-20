@@ -18,30 +18,11 @@
     <link rel="apple-touch-icon" href="icon-192.png">
     
     <!-- PWA Manifest -->
-    <link rel="manifest" href="./manifest.webmanifest">
-    <meta name="theme-color" content="#ffffff">
-     
+    <link rel="manifest" href="manifest.json">
+    
     <!-- External CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <link rel="stylesheet" href="styles.css" />
-    <script>
-let deferredPrompt;
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();              // don’t auto-show
-  deferredPrompt = e;
-  document.getElementById('installBtn').hidden = false;
-});
-
-document.getElementById('installBtn').addEventListener('click', async () => {
-  if (!deferredPrompt) return;
-  deferredPrompt.prompt();
-  await deferredPrompt.userChoice; // { outcome: 'accepted' | 'dismissed' }
-  deferredPrompt = null;
-  document.getElementById('installBtn').hidden = true;
-});
-</script>
-
 </head>
 <body>
     <div class="app-container">
