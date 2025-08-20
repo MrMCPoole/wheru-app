@@ -19,6 +19,14 @@
     
     <!-- PWA Manifest -->
     <link rel="manifest" href="./manifest.webmanifest">
+    <meta name="theme-color" content="#ffffff">
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./service-worker.js');
+    });
+  }
+</script>
     
     <!-- External CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
