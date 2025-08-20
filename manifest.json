@@ -1,38 +1,21 @@
 {
-  "name": "WherU - Location Sharing App",
+  "name": "WherU Location Sharing",
   "short_name": "WherU",
-  "description": "Share your location and communicate with friends privately",
+  "description": "Share your location with friends",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#4facfe",
+  "background_color": "#ffffff",
   "theme_color": "#4facfe",
-  "orientation": "portrait-primary",
-  "scope": "./",
   "icons": [
     {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%234facfe'/%3E%3Cpath d='M96 40c-30.928 0-56 25.072-56 56 0 42 56 96 56 96s56-54 56-96c0-30.928-25.072-56-56-56zm0 76c-11.046 0-20-8.954-20-20s8.954-20 20-20 20 8.954 20 20-8.954 20-20 20z' fill='white'/%3E%3C/svg%3E",
+      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgdmlld0JveD0iMCAwIDE5MiAxOTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIiBmaWxsPSIjNGZhY2ZlIi8+CjxwYXRoIGQ9Ik05NiA0MEM2NS4wNzIgNDAgNDAgNjUuMDcyIDQwIDk2QzQwIDEzOCA5NiAxOTIgOTYgMTkyUzE1MiAxMzQgMTUyIDk2QzE1MiA2NS4wNzIgMTI2LjkyOCA0MCA5NiA0MFpNOTYgMTE2Qzg0Ljk1NCAxMTYgNzYgMTA3LjA0NiA3NiA5NkM3NiA4NC45NTQgODQuOTU0IDc2IDk2IDc2QzEwNy4wNDYgNzYgMTE2IDg0Ljk1NCAxMTYgOTZDMTE2IDEwNy4wNDYgMTA3LjA0NiAxMTYgOTYgMTE2WiIgZmlsbD0id2hpdGUiLz4KPHN2Zz4K",
       "sizes": "192x192",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "type": "image/svg+xml"
     },
     {
-      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' fill='%234facfe'/%3E%3Cpath d='M256 106.67c-82.475 0-149.33 67.525-149.33 149.33 0 112 149.33 256 149.33 256s149.33-144 149.33-256c0-82.475-66.855-149.33-149.33-149.33zm0 202.66c-29.456 0-53.33-23.874-53.33-53.33s23.874-53.33 53.33-53.33 53.33 23.874 53.33 53.33-23.874 53.33-53.33 53.33z' fill='white'/%3E%3C/svg%3E",
+      "src": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSIjNGZhY2ZlIi8+CjxwYXRoIGQ9Ik0yNTYgMTA2LjY3QzE3My41MjUgMTA2LjY3IDEwNi42NyAxNzMuNTI1IDEwNi42NyAyNTZDMTA2LjY3IDM2OCAyNTYgNTEyIDI1NiA1MTJTMDA1LjMzIDM2NCA0MDUuMzMgMjU2QzQwNS4zMyAxNzMuNTI1IDMzOC40NzUgMTA2LjY3IDI1NiAxMDYuNjdaTTI1NiAzMDkuMzNDMjI2LjU0NCAzMDkuMzMgMjAyLjY3IDI4NS40NTYgMjAyLjY3IDI1NkMyMDIuNjcgMjI2LjU0NCAyMjYuNTQ0IDIwMi42NyAyNTYgMjAyLjY3QzI4NS40NTYgMjAyLjY3IDMwOS4zMyAyMjYuNTQ0IDMwOS4zMyAyNTZDMzA5LjMzIDI4NS40NTYgMjg1LjQ1NiAzMDkuMzMgMjU2IDMwOS4zM1oiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo=",
       "sizes": "512x512",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
-  ],
-  "categories": ["social", "navigation", "utilities"],
-  "shortcuts": [
-    {
-      "name": "Flash Location",
-      "short_name": "Flash",
-      "description": "Flash your location to friends",
-      "url": "./?action=flash",
-      "icons": [{ 
-        "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' fill='%234facfe'/%3E%3Cpath d='M96 40c-30.928 0-56 25.072-56 56 0 42 56 96 56 96s56-54 56-96c0-30.928-25.072-56-56-56zm0 76c-11.046 0-20-8.954-20-20s8.954-20 20-20 20 8.954 20 20-8.954 20-20 20z' fill='white'/%3E%3C/svg%3E", 
-        "sizes": "192x192" 
-      }]
+      "type": "image/svg+xml"
     }
   ]
 }
