@@ -1,11 +1,11 @@
 {
-  "name": "WherU - Location Sharing App",
+  "name": "WherU",
   "short_name": "WherU",
-  "description": "Share your location and communicate with friends privately",
-  "start_url": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#4facfe",
-  "theme_color": "#4facfe",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
   "orientation": "portrait",
   "scope": "/",
   "icons": [
